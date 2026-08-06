@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "verifierfuzz"
+version = "0.0.1"
+description = "Find reward exploits before your model learns them"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "VerifierFuzz contributors" }]
+keywords = ["llm", "rlvr", "reward", "verifier", "fuzzing"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Testing",
+]
+
+[project.scripts]
+verifierfuzz = "verifierfuzz.__main__:main"
