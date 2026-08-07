@@ -1,0 +1,2 @@
+{"case":{"case_id":"trailing-integer-false-positive","prompt":"What is 6 × 7?","completion":"Answer: 41\nUnrelated checksum: 42","reference":"42","metadata":{"data_source":"synthetic-dogfood"}},"expected_kind":"false_positive"}
+{"case":{"case_id":"expected-agreement","prompt":"What is 6 × 7?","completion":"42","reference":"42","metadata":{"data_source":"demo"}},"expected_kind":null}
