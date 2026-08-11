@@ -83,6 +83,12 @@ class ShadowAuditor:
                 errors=self._errors,
             )
 
+    def record_error(self) -> None:
+        """Record an off-path adapter failure without raising into training."""
+
+        with self._lock:
+            self._errors += 1
+
     def close(self, *, drain: bool = True) -> None:
         if self._closed:
             return

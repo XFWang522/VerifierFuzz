@@ -99,15 +99,18 @@ def wrap_verl_reward(
         extra_info: Optional[Mapping[str, Any]],
     ) -> None:
         if sample_rate and rng.random() < sample_rate:
-            auditor.try_submit(
-                make_verl_case(
-                    data_source,
-                    solution_str,
-                    ground_truth,
-                    extra_info,
-                ),
-                raw,
-            )
+            try:
+                auditor.try_submit(
+                    make_verl_case(
+                        data_source,
+                        solution_str,
+                        ground_truth,
+                        extra_info,
+                    ),
+                    raw,
+                )
+            except Exception:
+                auditor.record_error()
 
     if inspect.iscoroutinefunction(function):
         @functools.wraps(function)

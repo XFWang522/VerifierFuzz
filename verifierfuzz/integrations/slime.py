@@ -155,11 +155,14 @@ def wrap_slime_reward(
         if inspect.isawaitable(raw):
             raw = await raw
         if sample_rate and rng.random() < sample_rate:
-            key = reward_key or getattr(args, "reward_key", None)
-            auditor.try_submit(
-                make_slime_case(args, sample),
-                _select_reward(raw, key),
-            )
+            try:
+                key = reward_key or getattr(args, "reward_key", None)
+                auditor.try_submit(
+                    make_slime_case(args, sample),
+                    _select_reward(raw, key),
+                )
+            except Exception:
+                auditor.record_error()
         return raw
 
     return wrapped
@@ -192,10 +195,13 @@ def wrap_slime_group_reward(
         key = reward_key or getattr(args, "reward_key", None)
         for sample, raw in zip(samples, raw_batch):
             if sample_rate and rng.random() < sample_rate:
-                auditor.try_submit(
-                    make_slime_case(args, sample),
-                    _select_reward(raw, key),
-                )
+                try:
+                    auditor.try_submit(
+                        make_slime_case(args, sample),
+                        _select_reward(raw, key),
+                    )
+                except Exception:
+                    auditor.record_error()
         return raw_batch
 
     return wrapped

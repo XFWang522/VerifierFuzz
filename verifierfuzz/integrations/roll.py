@@ -248,7 +248,10 @@ def wrap_roll_compute_rewards(
         @functools.wraps(function)
         async def async_wrapped(data: Any, *args: Any, **kwargs: Any) -> Any:
             output = await function(data, *args, **kwargs)
-            submit(data, output)
+            try:
+                submit(data, output)
+            except Exception:
+                auditor.record_error()
             return output
 
         return async_wrapped
@@ -256,7 +259,10 @@ def wrap_roll_compute_rewards(
     @functools.wraps(function)
     def wrapped(data: Any, *args: Any, **kwargs: Any) -> Any:
         output = function(data, *args, **kwargs)
-        submit(data, output)
+        try:
+            submit(data, output)
+        except Exception:
+            auditor.record_error()
         return output
 
     return wrapped

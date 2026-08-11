@@ -127,20 +127,23 @@ def wrap_trl_reward(
         completions: Sequence[Any],
         kwargs: Mapping[str, Any],
     ) -> None:
-        batch_size = len(completions)
-        for index, raw in enumerate(raw_batch):
-            if raw is None or not sample_rate or rng.random() >= sample_rate:
-                continue
-            columns = _item_kwargs(kwargs, index, batch_size)
-            auditor.try_submit(
-                make_trl_case(
-                    prompts[index],
-                    completions[index],
-                    index=index,
-                    dataset_columns=columns,
-                ),
-                raw,
-            )
+        try:
+            batch_size = len(completions)
+            for index, raw in enumerate(raw_batch):
+                if raw is None or not sample_rate or rng.random() >= sample_rate:
+                    continue
+                columns = _item_kwargs(kwargs, index, batch_size)
+                auditor.try_submit(
+                    make_trl_case(
+                        prompts[index],
+                        completions[index],
+                        index=index,
+                        dataset_columns=columns,
+                    ),
+                    raw,
+                )
+        except Exception:
+            auditor.record_error()
 
     if inspect.iscoroutinefunction(function):
         @functools.wraps(function)

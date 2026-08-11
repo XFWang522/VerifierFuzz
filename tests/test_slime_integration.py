@@ -152,6 +152,29 @@ class SlimeIntegrationTests(unittest.IsolatedAsyncioTestCase):
             )
         auditor.close()
 
+    async def test_audit_conversion_failure_is_fail_open(self):
+        raw_reward = {"accuracy": 1.0}
+
+        async def reward_fn(args, sample):
+            return raw_reward
+
+        auditor = ShadowAuditor(CallableVerifier(lambda case: True))
+        wrapped = wrap_slime_reward(
+            reward_fn,
+            auditor,
+            sample_rate=1.0,
+            reward_key="missing",
+        )
+
+        result = await wrapped(
+            SimpleNamespace(reward_key=None),
+            SimpleNamespace(prompt="", response="", label=None, metadata={}),
+        )
+        auditor.close()
+
+        self.assertIs(result, raw_reward)
+        self.assertEqual(auditor.stats().errors, 1)
+
     def test_make_case_uses_slime_sample_fields(self):
         case = make_slime_case(
             SimpleNamespace(reward_key=None),

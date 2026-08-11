@@ -105,6 +105,23 @@ class RollIntegrationTests(unittest.TestCase):
         auditor.close()
         self.assertEqual(auditor.stats().submitted, 0)
 
+    def test_decode_failure_is_fail_open(self):
+        data = FakeDataProto(
+            batch={"prompts": [[1]], "responses": [[2]]},
+            non_tensor_batch={"ground_truth": ["answer"]},
+        )
+        output = FakeDataProto(batch={"response_level_rewards": [1.0]})
+        auditor = ShadowAuditor(CallableVerifier(lambda case: True))
+        wrapped = wrap_roll_compute_rewards(
+            lambda input_data: output,
+            auditor,
+            sample_rate=1.0,
+        )
+
+        self.assertIs(wrapped(data), output)
+        auditor.close()
+        self.assertEqual(auditor.stats().errors, 1)
+
     def test_roll_verifier_runs_worker_compute_rewards(self):
         output = FakeDataProto(batch={"response_level_rewards": [1.0]})
 
