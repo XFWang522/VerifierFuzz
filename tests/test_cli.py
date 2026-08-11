@@ -12,6 +12,12 @@ def target(completion, reference):
 
 def oracle(completion, reference):
     return completion.strip() == reference
+
+async def slime_target(args, sample):
+    return "42" in sample.response
+
+async def slime_oracle(args, sample):
+    return sample.response.strip() == sample.label
 """
 
 
@@ -115,6 +121,48 @@ class CliTests(unittest.TestCase):
                     "zero-one",
                     "--corpus",
                     str(corpus),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+
+    def test_replay_supports_slime_reward_adapter(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            module = root / "rewards.py"
+            corpus = root / "cases.jsonl"
+            module.write_text(MODULE, encoding="utf-8")
+            corpus.write_text(
+                json.dumps(
+                    {
+                        "case_id": "slime",
+                        "completion": "answer 42",
+                        "reference": "43",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            exit_code = main(
+                [
+                    "replay",
+                    "--target",
+                    f"{module}:slime_target",
+                    "--oracle",
+                    f"{module}:slime_oracle",
+                    "--adapter",
+                    "slime",
+                    "--oracle-adapter",
+                    "slime",
+                    "--target-policy",
+                    "zero-one",
+                    "--oracle-policy",
+                    "zero-one",
+                    "--corpus",
+                    str(corpus),
+                    "--max-findings",
+                    "1",
                 ]
             )
 

@@ -11,7 +11,13 @@ from typing import Any, Optional, Sequence
 
 from .corpus import load_cases, load_regression_cases, write_findings
 from .engine import audit_cases
-from .integrations import CallableVerifier, TrlVerifier, VerlVerifier
+from .integrations import (
+    CallableVerifier,
+    SlimeBatchVerifier,
+    SlimeVerifier,
+    TrlVerifier,
+    VerlVerifier,
+)
 from .mutators import TextMutationSuite
 from .protocol import ScorePolicy, VerifierCase
 from .reporting import render_summary, write_sarif
@@ -59,6 +65,14 @@ def _load_verifier(spec: str, adapter: str, policy: ScorePolicy) -> Any:
         return VerlVerifier(symbol, policy=policy)
     if adapter == "trl":
         return TrlVerifier(symbol, policy=policy)
+    if adapter == "slime":
+        return SlimeVerifier(symbol, policy=policy)
+    if adapter == "slime-group":
+        return SlimeBatchVerifier(symbol, policy=policy)
+    if adapter == "roll":
+        raise ValueError(
+            "ROLL CLI symbols must be configured RollVerifier instances"
+        )
     return CallableVerifier(
         symbol,
         policy=policy,
@@ -165,12 +179,12 @@ def _add_verifier_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--oracle", required=True, help="Reference import spec")
     parser.add_argument(
         "--adapter",
-        choices=["callable", "pair", "verl", "trl"],
+        choices=["callable", "pair", "verl", "trl", "slime", "slime-group", "roll"],
         default="callable",
     )
     parser.add_argument(
         "--oracle-adapter",
-        choices=["callable", "pair", "verl", "trl"],
+        choices=["callable", "pair", "verl", "trl", "slime", "slime-group", "roll"],
         default="callable",
     )
     parser.add_argument(
