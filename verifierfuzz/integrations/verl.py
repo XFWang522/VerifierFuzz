@@ -7,7 +7,7 @@ import hashlib
 import inspect
 import random
 import time
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Dict, Mapping, Optional
 
 from verifierfuzz.protocol import (
     ScorePolicy,
@@ -53,9 +53,11 @@ class VerlVerifier:
         function: Callable[..., Any],
         *,
         policy: ScorePolicy = ScorePolicy(),
+        reward_kwargs: Optional[Mapping[str, Any]] = None,
     ) -> None:
         self.function = function
         self.policy = policy
+        self.reward_kwargs: Dict[str, Any] = dict(reward_kwargs or {})
 
     async def evaluate(self, case: VerifierCase) -> VerifierOutcome:
         started = time.perf_counter()
@@ -65,6 +67,7 @@ class VerlVerifier:
             solution_str=case.completion,
             ground_truth=case.reference,
             extra_info=metadata.get("extra_info", {}),
+            **self.reward_kwargs,
         )
         if inspect.isawaitable(raw):
             raw = await raw

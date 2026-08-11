@@ -44,6 +44,36 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(outcome.decision, Decision.PASS)
         self.assertEqual(calls[0], ("math", "42", "42", {"uid": "v"}))
 
+    def test_verl_adapter_forwards_reward_loop_kwargs(self):
+        def reward_fn(
+            *,
+            data_source,
+            solution_str,
+            ground_truth,
+            extra_info,
+            reward_router_address,
+        ):
+            self.assertEqual(reward_router_address, "http://reward-router")
+            return {"score": 1.0}
+
+        verifier = VerlVerifier(
+            reward_fn,
+            policy=ScorePolicy.zero_one(),
+            reward_kwargs={"reward_router_address": "http://reward-router"},
+        )
+        outcome = asyncio.run(
+            verifier.evaluate(
+                VerifierCase(
+                    case_id="reward-loop",
+                    completion="42",
+                    reference="42",
+                    metadata={"data_source": "math", "extra_info": {}},
+                )
+            )
+        )
+
+        self.assertEqual(outcome.decision, Decision.PASS)
+
     def test_trl_adapter_uses_batch_signature(self):
         calls = []
 
