@@ -25,7 +25,7 @@ VerifierFuzz provides:
 - differential checking against independent reference oracles;
 - minimization of reward-positive incorrect completions;
 - JSONL and SARIF artifacts;
-- native verl and TRL reward-function adapters;
+- native verl, slime, ROLL, and TRL reward adapters;
 - bounded, fail-open shadow auditing for training loops.
 
 ## Quick start
@@ -80,9 +80,54 @@ compute_score(data_source, solution_str, ground_truth, extra_info=None)
 ```
 
 `verifierfuzz.integrations.wrap_verl_reward` returns a function with that
-contract. It returns the original reward object before submitting a sampled case
-to a bounded shadow queue. See
+contract. It preserves the original reward object and submits sampled cases to
+a bounded shadow queue after the target reward returns. See
 [`examples/verl_reward.py`](examples/verl_reward.py).
+
+Both synchronous rewards and the asynchronous Reward Loop contract are
+supported. Fixed `reward_kwargs`, such as a reward router address or tokenizer,
+can be supplied to `VerlVerifier` for offline audits.
+
+### slime
+
+slime custom rewards use one of these asynchronous contracts:
+
+```python
+custom_rm(args, sample) -> float | dict
+batched_custom_rm(args, samples) -> list[float | dict]  # --group-rm
+```
+
+Use `wrap_slime_reward` with `--custom-rm-path`, or
+`wrap_slime_group_reward` together with `--group-rm`. Both wrappers return the
+original reward object and support slime's keyed reward dictionaries through
+`reward_key`. See [`examples/slime_reward.py`](examples/slime_reward.py).
+
+```bash
+--custom-rm-path examples.slime_reward.custom_rm
+# or:
+--group-rm --custom-rm-path examples.slime_reward.group_rm
+```
+
+### ROLL
+
+ROLL RLVR rewards are worker methods:
+
+```python
+RewardWorker.compute_rewards(data: DataProto) -> DataProto
+```
+
+`wrap_roll_compute_rewards` samples rows from `prompts`, `responses`, and
+`non_tensor_batch`, then submits normalized cases after the worker has produced
+`response_level_rewards`. It returns the exact original `DataProto` object and
+does not import ROLL or torch. See
+[`examples/roll_reward_worker.py`](examples/roll_reward_worker.py) for a
+subclass that can be referenced from `rewards.*.worker_cls`.
+
+```yaml
+rewards:
+  math_rule:
+    worker_cls: examples.roll_reward_worker.AuditedMathRewardWorker
+```
 
 ### TRL
 
@@ -96,6 +141,21 @@ reward_func(prompts, completions, **dataset_columns) -> list[float | None]
 and independently audits selected completions. Standard and conversational
 prompt/completion values are passed through unchanged. See
 [`examples/trl_reward.py`](examples/trl_reward.py).
+
+### Compatibility and failure isolation
+
+The adapters follow the public contracts documented by current `verl`, `slime`,
+and `alibaba/ROLL` main branches. Contract tests use dependency-free stand-ins
+for framework objects, so installing VerifierFuzz does not install an RL stack.
+
+All live wrappers preserve the original return object. Reference evaluation
+runs on a bounded background queue; a full queue drops audit samples. Reference
+timeouts and adapter conversion failures are counted in `ShadowStats` and do
+not raise into the training reward path.
+
+The CLI accepts `--adapter verl`, `trl`, `slime`, and `slime-group`. ROLL
+workers require framework-specific construction, so CLI use exports a
+preconfigured `RollVerifier` instance and selects `--adapter roll`.
 
 ## Corpus format
 
@@ -166,7 +226,7 @@ environment.
 - [x] Framework-independent verifier protocol
 - [x] Differential, metamorphic, and stochastic consistency audits
 - [x] Hierarchical reducer for textual counterexamples
-- [x] verl and TRL reward adapters
+- [x] verl, slime, ROLL, and TRL reward adapters
 - [x] JSONL and SARIF reports
 - [ ] JSON tool-call and schema verifier adapter
 - [ ] Code-grader integrity and hidden-test checks

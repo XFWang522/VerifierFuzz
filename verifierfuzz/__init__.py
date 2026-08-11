@@ -35,4 +35,4 @@ __all__ = [
     "audit_metamorphic_async",
     "mutate_text",
 ]
-__version__ = "0.1.0"
+__version__ = "0.2.0"
