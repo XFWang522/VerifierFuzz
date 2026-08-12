@@ -24,7 +24,7 @@ from .integrations import (
     TrlVerifier,
     VerlVerifier,
 )
-from .mutators import TextMutationSuite
+from .mutators import MathMutationSuite, TextMutationSuite
 from .protocol import ScorePolicy, VerifierCase
 from .reporting import render_summary, write_sarif
 
@@ -205,11 +205,16 @@ def _scan_command(args: argparse.Namespace) -> int:
         offset=args.offset,
         limit=args.limit,
     )
+    mutators = []
+    if args.mutation_profile in ("text", "all"):
+        mutators.append(TextMutationSuite())
+    if args.mutation_profile in ("math", "all"):
+        mutators.append(MathMutationSuite())
     findings = audit_cases(
         cases,
         target,
         reference,
-        mutators=[TextMutationSuite()],
+        mutators=mutators,
         seed=args.seed,
         include_seeds=True,
         minimize=args.minimize,
@@ -291,6 +296,11 @@ def build_parser() -> argparse.ArgumentParser:
     scan_parser.add_argument("--offset", type=int, default=0)
     scan_parser.add_argument("--limit", type=int)
     scan_parser.add_argument("--seed", type=int, default=0)
+    scan_parser.add_argument(
+        "--mutation-profile",
+        choices=["none", "text", "math", "all"],
+        default="all",
+    )
     scan_parser.add_argument("--minimize", action="store_true")
     scan_parser.add_argument("--max-findings", type=int, default=0)
     scan_parser.add_argument(
