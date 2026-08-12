@@ -242,3 +242,14 @@ an issue before implementing a large adapter.
 ## License
 
 MIT
+
+## Citation
+
+```bibtex
+@software{wang2026verifierfuzz,
+  author = {Wang, Xiaofeng},
+  title = {VerifierFuzz: Find Reward Exploits Before Your Model Learns Them},
+  year = {2026},
+  url = {https://github.com/XFWang522/VerifierFuzz}
+}
+```
