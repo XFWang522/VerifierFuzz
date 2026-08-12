@@ -174,6 +174,7 @@ class CliTests(unittest.TestCase):
             module = root / "rewards.py"
             dataset = root / "rollouts.jsonl"
             findings = root / "findings.jsonl"
+            html_report = root / "report.html"
             regression = root / "regression.jsonl"
             module.write_text(MODULE, encoding="utf-8")
             dataset.write_text(
@@ -218,6 +219,8 @@ class CliTests(unittest.TestCase):
                     "--minimize",
                     "--output",
                     str(findings),
+                    "--html",
+                    str(html_report),
                     "--regression-output",
                     str(regression),
                     "--max-findings",
@@ -227,6 +230,10 @@ class CliTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
             self.assertTrue(findings.exists())
+            self.assertIn(
+                "VerifierFuzz Audit Report",
+                html_report.read_text(encoding="utf-8"),
+            )
             frozen = [
                 json.loads(line)
                 for line in regression.read_text(encoding="utf-8").splitlines()

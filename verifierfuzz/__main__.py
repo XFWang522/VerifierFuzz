@@ -26,7 +26,7 @@ from .integrations import (
 )
 from .mutators import MathMutationSuite, TextMutationSuite
 from .protocol import ScorePolicy, VerifierCase
-from .reporting import render_summary, write_sarif
+from .reporting import render_summary, write_html, write_sarif
 
 
 def _weak_math_verifier(case: VerifierCase) -> bool:
@@ -94,6 +94,9 @@ def _write_outputs(args: argparse.Namespace, findings: Sequence[Any]) -> None:
     if args.sarif:
         write_sarif(args.sarif, findings)
         print(f"SARIF: {args.sarif}")
+    if args.html:
+        write_html(args.html, findings)
+        print(f"HTML: {args.html}")
 
 
 def run_demo() -> int:
@@ -256,6 +259,7 @@ def _add_verifier_arguments(parser: argparse.ArgumentParser) -> None:
 def _add_output_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--output", help="Write findings as JSONL")
     parser.add_argument("--sarif", help="Write findings as SARIF 2.1.0")
+    parser.add_argument("--html", help="Write a self-contained HTML report")
 
 
 def build_parser() -> argparse.ArgumentParser:
