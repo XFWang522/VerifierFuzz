@@ -1,6 +1,7 @@
 """Property-based testing for RL reward verifiers."""
 
 from .core import Finding, audit, mutate_text
+from .dataset import DatasetColumns, load_dataset_cases
 from .engine import (
     AuditFinding,
     audit_cases,
@@ -23,6 +24,7 @@ __all__ = [
     "AuditFinding",
     "BatchVerifier",
     "Decision",
+    "DatasetColumns",
     "Finding",
     "ScorePolicy",
     "SyncVerifier",
@@ -33,6 +35,7 @@ __all__ = [
     "audit_cases_async",
     "audit_consistency_async",
     "audit_metamorphic_async",
+    "load_dataset_cases",
     "mutate_text",
 ]
-__version__ = "0.2.0"
+__version__ = "0.3.0"

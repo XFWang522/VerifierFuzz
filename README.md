@@ -24,8 +24,11 @@ VerifierFuzz provides:
 - deterministic mutation lineage and text boundary mutations;
 - differential checking against independent reference oracles;
 - minimization of reward-positive incorrect completions;
-- JSONL and SARIF artifacts;
+- JSONL, SARIF, and interactive HTML artifacts;
+- one-command JSONL, JSON, and Parquet dataset scans;
+- math answer-parser exploit mutations;
 - native verl, slime, ROLL, and TRL reward adapters;
+- live upstream contract drift checks;
 - bounded, fail-open shadow auditing for training loops.
 
 ## Quick start
@@ -34,6 +37,25 @@ The core package has no runtime dependencies:
 
 ```bash
 python3 -m verifierfuzz demo
+```
+
+Scan real rollout data, generate exploit mutations, and freeze every finding:
+
+```bash
+python3 -m verifierfuzz scan \
+  --adapter pair \
+  --oracle-adapter pair \
+  --target-policy zero-one \
+  --oracle-policy zero-one \
+  --target examples/simple_rewards.py:target \
+  --oracle examples/simple_rewards.py:oracle \
+  --dataset examples/rollouts.jsonl \
+  --mutation-profile all \
+  --minimize \
+  --output findings.jsonl \
+  --html report.html \
+  --regression-output regression.jsonl \
+  --max-findings 100
 ```
 
 Run an audit against functions in a local Python file:
@@ -66,8 +88,9 @@ python3 -m verifierfuzz regression \
   --corpus examples/regression.jsonl
 ```
 
-`audit` and `replay` return exit code `1` when findings exceed
-`--max-findings`. `regression` returns `3` when an expected disagreement changes.
+`scan`, `audit`, and `replay` return exit code `1` when findings exceed
+`--max-findings`. `regression` returns `3` when an expected disagreement
+changes. `compat` returns `4` when an upstream framework contract drifts.
 
 ## RL framework integration
 
@@ -145,8 +168,13 @@ prompt/completion values are passed through unchanged. See
 ### Compatibility and failure isolation
 
 The adapters follow the public contracts documented by current `verl`, `slime`,
-and `alibaba/ROLL` main branches. Contract tests use dependency-free stand-ins
-for framework objects, so installing VerifierFuzz does not install an RL stack.
+and `alibaba/ROLL` main branches. `verifierfuzz compat` downloads and parses
+those live source files without importing or executing their heavy framework
+stacks. Scheduled CI reports adapter-facing signature drift:
+
+```bash
+python3 -m verifierfuzz compat --output compatibility.json
+```
 
 All live wrappers preserve the original return object. Reference evaluation
 runs on a bounded background queue; a full queue drops audit samples. Reference
@@ -176,12 +204,16 @@ Finding artifacts include the normalized target and reference outcomes,
 mutation name and seed, relation type, verifier errors, and minimized
 completion.
 
+`scan` maps rollout datasets into this case format. Column arguments accept
+dotted paths such as `reward_model.ground_truth`; `--metadata-column` is
+repeatable. Parquet input is streamed in batches and requires `pyarrow`.
+
 ## Python API
 
 ```python
 from verifierfuzz import ScorePolicy, VerifierCase, audit_cases
 from verifierfuzz.integrations import CallableVerifier
-from verifierfuzz.mutators import TextMutationSuite
+from verifierfuzz.mutators import MathMutationSuite, TextMutationSuite
 
 target = CallableVerifier(
     lambda case: case.reference in case.completion,
@@ -195,7 +227,7 @@ findings = audit_cases(
     [VerifierCase(case_id="one", completion="42", reference="42")],
     target,
     reference,
-    mutators=[TextMutationSuite()],
+    mutators=[TextMutationSuite(), MathMutationSuite()],
     minimize=True,
 )
 ```
@@ -227,10 +259,13 @@ environment.
 - [x] Differential, metamorphic, and stochastic consistency audits
 - [x] Hierarchical reducer for textual counterexamples
 - [x] verl, slime, ROLL, and TRL reward adapters
-- [x] JSONL and SARIF reports
+- [x] Dataset scanner with regression freezing
+- [x] Math answer-parser exploit suite
+- [x] JSONL, SARIF, and interactive HTML reports
+- [x] Scheduled upstream framework contract probes
 - [ ] JSON tool-call and schema verifier adapter
 - [ ] Code-grader integrity and hidden-test checks
-- [ ] HTML report and public robustness leaderboard
+- [ ] Public robustness leaderboard
 - [ ] Public, versioned verifier robustness suite
 
 ## Contributing
