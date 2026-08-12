@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import importlib.util
+import json
 import sys
 from pathlib import Path
 from typing import Any, Optional, Sequence
@@ -15,6 +16,7 @@ from .corpus import (
     write_findings,
     write_regression_findings,
 )
+from .compat import check_upstream_contracts
 from .dataset import DatasetColumns, load_dataset_cases
 from .engine import audit_cases
 from .integrations import (
@@ -124,6 +126,26 @@ def run_demo() -> int:
         completion = finding.minimized_completion or finding.case.completion
         print(f"[{finding.kind}] {completion!r}")
     return 0
+
+
+def _compat_command(args: argparse.Namespace) -> int:
+    results = check_upstream_contracts()
+    for result in results:
+        status = "PASS" if result.passed else "FAIL"
+        detail = ", ".join(result.checks) if result.passed else result.error
+        print(f"[{status}] {result.framework}: {detail}")
+    if args.output:
+        Path(args.output).write_text(
+            json.dumps(
+                [result.to_dict() for result in results],
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        print(f"Compatibility JSON: {args.output}")
+    return 4 if any(not result.passed for result in results) else 0
 
 
 def _audit_command(args: argparse.Namespace, *, mutations: bool) -> int:
@@ -269,6 +291,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("demo", help="Run the executable proof of concept")
+    compat_parser = subparsers.add_parser(
+        "compat",
+        help="Check live upstream reward interface contracts",
+    )
+    compat_parser.add_argument("--output", help="Write compatibility results as JSON")
 
     scan_parser = subparsers.add_parser(
         "scan",
@@ -348,6 +375,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "demo":
         return run_demo()
+    if args.command == "compat":
+        return _compat_command(args)
     if args.command == "scan":
         return _scan_command(args)
     if args.command == "audit":
