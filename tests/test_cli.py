@@ -168,6 +168,75 @@ class CliTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
 
+    def test_scan_maps_dataset_columns_and_freezes_regressions(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            module = root / "rewards.py"
+            dataset = root / "rollouts.jsonl"
+            findings = root / "findings.jsonl"
+            regression = root / "regression.jsonl"
+            module.write_text(MODULE, encoding="utf-8")
+            dataset.write_text(
+                json.dumps(
+                    {
+                        "uid": "scan",
+                        "prompt": "question",
+                        "rollout": {"text": "answer 42"},
+                        "reward_model": {"ground_truth": "43"},
+                        "extra_info": {"split": "train"},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            exit_code = main(
+                [
+                    "scan",
+                    "--target",
+                    f"{module}:target",
+                    "--oracle",
+                    f"{module}:oracle",
+                    "--adapter",
+                    "pair",
+                    "--oracle-adapter",
+                    "pair",
+                    "--target-policy",
+                    "zero-one",
+                    "--oracle-policy",
+                    "zero-one",
+                    "--dataset",
+                    str(dataset),
+                    "--id-column",
+                    "uid",
+                    "--completion-column",
+                    "rollout.text",
+                    "--reference-column",
+                    "reward_model.ground_truth",
+                    "--metadata-column",
+                    "extra_info.split",
+                    "--minimize",
+                    "--output",
+                    str(findings),
+                    "--regression-output",
+                    str(regression),
+                    "--max-findings",
+                    "99",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(findings.exists())
+            frozen = [
+                json.loads(line)
+                for line in regression.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(frozen[0]["expected_kind"], "false_positive")
+            self.assertEqual(
+                frozen[0]["case"]["metadata"]["extra_info.split"],
+                "train",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

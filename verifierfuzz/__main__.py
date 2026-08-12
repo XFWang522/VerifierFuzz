@@ -9,7 +9,13 @@ import sys
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-from .corpus import load_cases, load_regression_cases, write_findings
+from .corpus import (
+    load_cases,
+    load_regression_cases,
+    write_findings,
+    write_regression_findings,
+)
+from .dataset import DatasetColumns, load_dataset_cases
 from .engine import audit_cases
 from .integrations import (
     CallableVerifier,
@@ -174,6 +180,47 @@ def _regression_command(args: argparse.Namespace) -> int:
     return 3 if mismatches else 0
 
 
+def _scan_command(args: argparse.Namespace) -> int:
+    target = _load_verifier(
+        args.target,
+        args.adapter,
+        _score_policy(args.target_policy, args.target_threshold),
+    )
+    reference = _load_verifier(
+        args.oracle,
+        args.oracle_adapter,
+        _score_policy(args.oracle_policy, args.oracle_threshold),
+    )
+    cases = load_dataset_cases(
+        args.dataset,
+        columns=DatasetColumns(
+            prompt=args.prompt_column,
+            completion=args.completion_column,
+            reference=args.reference_column,
+            case_id=args.id_column,
+            metadata=args.metadata_column,
+        ),
+        format=args.format,
+        framework=args.framework,
+        offset=args.offset,
+        limit=args.limit,
+    )
+    findings = audit_cases(
+        cases,
+        target,
+        reference,
+        mutators=[TextMutationSuite()],
+        seed=args.seed,
+        include_seeds=True,
+        minimize=args.minimize,
+    )
+    _write_outputs(args, findings)
+    if args.regression_output:
+        write_regression_findings(args.regression_output, findings)
+        print(f"Regression corpus: {args.regression_output}")
+    return 1 if len(findings) > args.max_findings else 0
+
+
 def _add_verifier_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--target", required=True, help="Target import spec")
     parser.add_argument("--oracle", required=True, help="Reference import spec")
@@ -214,6 +261,43 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("demo", help="Run the executable proof of concept")
 
+    scan_parser = subparsers.add_parser(
+        "scan",
+        help="Audit reward functions against a JSONL, JSON, or Parquet dataset",
+    )
+    _add_verifier_arguments(scan_parser)
+    _add_output_arguments(scan_parser)
+    scan_parser.add_argument("--dataset", required=True)
+    scan_parser.add_argument(
+        "--format",
+        choices=["auto", "jsonl", "json", "parquet"],
+        default="auto",
+    )
+    scan_parser.add_argument(
+        "--framework",
+        choices=["generic", "verl", "slime", "roll", "trl"],
+        default="generic",
+    )
+    scan_parser.add_argument("--prompt-column", default="prompt")
+    scan_parser.add_argument("--completion-column", default="response")
+    scan_parser.add_argument("--reference-column", default="ground_truth")
+    scan_parser.add_argument("--id-column", default="id")
+    scan_parser.add_argument(
+        "--metadata-column",
+        action="append",
+        default=[],
+        help="Copy a dotted dataset field into case metadata; repeatable",
+    )
+    scan_parser.add_argument("--offset", type=int, default=0)
+    scan_parser.add_argument("--limit", type=int)
+    scan_parser.add_argument("--seed", type=int, default=0)
+    scan_parser.add_argument("--minimize", action="store_true")
+    scan_parser.add_argument("--max-findings", type=int, default=0)
+    scan_parser.add_argument(
+        "--regression-output",
+        help="Freeze current findings into a regression JSONL corpus",
+    )
+
     audit_parser = subparsers.add_parser(
         "audit",
         help="Mutate a corpus and compare target with reference",
@@ -250,6 +334,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "demo":
         return run_demo()
+    if args.command == "scan":
+        return _scan_command(args)
     if args.command == "audit":
         return _audit_command(args, mutations=True)
     if args.command == "replay":

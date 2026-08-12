@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Iterable, List, Optional
 
@@ -70,4 +70,33 @@ def write_findings(path: str, findings: Iterable[AuditFinding]) -> None:
         for finding in findings:
             handle.write(
                 json.dumps(finding_to_dict(finding), ensure_ascii=False) + "\n"
+            )
+
+
+def write_regression_findings(
+    path: str,
+    findings: Iterable[AuditFinding],
+) -> None:
+    with Path(path).open("w", encoding="utf-8") as handle:
+        for finding in findings:
+            case = finding.case
+            if finding.minimized_completion is not None:
+                case = replace(
+                    case,
+                    completion=finding.minimized_completion,
+                )
+            if finding.mutation is not None:
+                case = replace(
+                    case,
+                    case_id=f"{case.case_id}::{finding.mutation.name}",
+                )
+            handle.write(
+                json.dumps(
+                    {
+                        "case": case_to_dict(case),
+                        "expected_kind": finding.kind,
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
             )
